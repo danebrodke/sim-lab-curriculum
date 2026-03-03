@@ -18,15 +18,21 @@ import { EquipmentList } from './equipment-list';
 import { SessionEditDialog } from './session-edit-dialog';
 import { toast } from 'sonner';
 
-/** Truncated text with tooltip on hover */
+/** Truncated text with tooltip on hover (desktop) and tap-to-expand (mobile) */
 function CellText({ text, className }: { text: string | null; className?: string }) {
+  const [expanded, setExpanded] = useState(false);
   if (!text) return null;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={cn('block truncate text-sm', className)}>{text}</span>
+        <span
+          className={cn('block text-sm cursor-default', expanded ? 'whitespace-pre-wrap' : 'truncate', className)}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {text}
+        </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-sm">
+      <TooltipContent side="bottom" className="max-w-sm hidden lg:block">
         <p className="whitespace-pre-wrap">{text}</p>
       </TooltipContent>
     </Tooltip>
@@ -44,6 +50,43 @@ const BASE_COLUMNS: readonly { key: string; label: string; defaultWidth: number;
   { key: 'equipment', label: 'Equipment', defaultWidth: 100 },
   { key: 'tissue', label: 'Tissue', defaultWidth: 220 },
 ];
+
+/** Topic cell: taps expand on mobile, clicks edit on desktop */
+function TopicCell({ session, holiday, userCanEdit, onEdit }: { session: Session; holiday: boolean; userCanEdit: boolean; onEdit: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+
+  const handleClick = () => {
+    if (isMobile) {
+      setExpanded(!expanded);
+    } else if (userCanEdit) {
+      onEdit();
+    }
+  };
+
+  return (
+    <TableCell
+      className={cn(
+        'overflow-hidden',
+        !isMobile && userCanEdit && 'cursor-pointer hover:text-primary transition-colors',
+      )}
+      onClick={handleClick}
+    >
+      <span
+        className={cn(
+          'block text-sm',
+          expanded ? 'whitespace-pre-wrap' : 'truncate',
+          !holiday && 'font-semibold',
+          holiday && 'italic',
+          !isMobile && userCanEdit && !holiday && 'underline decoration-dotted underline-offset-2',
+        )}
+        title={session.topic || ''}
+      >
+        {session.topic || '\u2014'}
+      </span>
+    </TableCell>
+  );
+}
 
 interface SessionTableProps {
   sessions: Session[];
@@ -238,25 +281,12 @@ export function SessionTable({ sessions, role, highlightedDate, attachments, sho
                     <div className="font-medium text-sm">{format(date, 'MMM d')}</div>
                     <div className="text-muted-foreground text-xs">{format(date, 'EEE')}</div>
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      'overflow-hidden',
-                      userCanEdit && 'cursor-pointer hover:text-primary transition-colors',
-                    )}
-                    onClick={userCanEdit ? () => setEditingSession(session) : undefined}
-                  >
-                    <span
-                      className={cn(
-                        'block truncate text-sm',
-                        !holiday && 'font-semibold',
-                        holiday && 'italic',
-                        userCanEdit && !holiday && 'underline decoration-dotted underline-offset-2',
-                      )}
-                      title={session.topic || ''}
-                    >
-                      {session.topic || '\u2014'}
-                    </span>
-                  </TableCell>
+                  <TopicCell
+                    session={session}
+                    holiday={holiday}
+                    userCanEdit={userCanEdit}
+                    onEdit={() => setEditingSession(session)}
+                  />
                   <TableCell className="overflow-hidden"><FacultyBadges faculty={session.faculty} /></TableCell>
                   <TableCell className="overflow-hidden"><CellText text={session.vendor} /></TableCell>
                   <TableCell className="overflow-hidden"><VendorContactCards contacts={session.vendor_contacts} /></TableCell>

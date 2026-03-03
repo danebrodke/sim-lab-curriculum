@@ -148,6 +148,16 @@ export default function DashboardPage() {
 
       {/* Controls row */}
       <div className="shrink-0 px-4 lg:px-6 py-3">
+        {/* Year nav on mobile (since navbar portal is hidden) */}
+        {selectedYear && (
+          <div className="flex justify-center mb-2 lg:hidden">
+            <AcademicYearNav
+              selectedYear={selectedYear}
+              onNavigate={navigateYear}
+              canNavigate={canNavigate}
+            />
+          </div>
+        )}
         <div className="flex items-center justify-center gap-3">
           <div className="flex rounded-md border overflow-hidden h-8 shrink-0">
             <button
