@@ -1,0 +1,67 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { AcademicYear } from '@/types/database';
+import { getCurrentAcademicYearLabel } from '@/lib/calendar/academic-year';
+
+export function useAcademicYears() {
+  const [years, setYears] = useState<AcademicYear[]>([]);
+  const [currentYear, setCurrentYear] = useState<AcademicYear | null>(null);
+  const [selectedYear, setSelectedYear] = useState<AcademicYear | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchYears = useCallback(async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('academic_years')
+      .select('*')
+      .order('start_date', { ascending: false });
+
+    if (!error && data) {
+      const typedYears = data as AcademicYear[];
+      setYears(typedYears);
+
+      const currentLabel = getCurrentAcademicYearLabel();
+      const current = typedYears.find(y => y.is_current) ||
+                      typedYears.find(y => y.label === currentLabel) ||
+                      typedYears[0];
+
+      setCurrentYear(current || null);
+      if (!selectedYear) {
+        setSelectedYear(current || null);
+      }
+    }
+    setLoading(false);
+  }, [selectedYear]);
+
+  useEffect(() => {
+    fetchYears();
+  }, [fetchYears]);
+
+  const navigateYear = (direction: 'prev' | 'next') => {
+    if (!selectedYear) return;
+    const currentIndex = years.findIndex(y => y.id === selectedYear.id);
+    const targetIndex = direction === 'prev' ? currentIndex + 1 : currentIndex - 1;
+    if (targetIndex >= 0 && targetIndex < years.length) {
+      setSelectedYear(years[targetIndex]);
+    }
+  };
+
+  const canNavigate = (direction: 'prev' | 'next'): boolean => {
+    if (!selectedYear) return false;
+    const currentIndex = years.findIndex(y => y.id === selectedYear.id);
+    return direction === 'prev' ? currentIndex < years.length - 1 : currentIndex > 0;
+  };
+
+  return {
+    years,
+    currentYear,
+    selectedYear,
+    setSelectedYear,
+    navigateYear,
+    canNavigate,
+    loading,
+    refetch: fetchYears,
+  };
+}

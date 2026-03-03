@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from 'next/server';
+import ical, { ICalCalendarMethod } from 'ical-generator';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const { token } = await params;
+
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(token)) {
+    return new NextResponse('Invalid token', { status: 400 });
+  }
+
+  const supabase = createAdminClient();
+
+  // Verify token exists
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('calendar_token', token)
+    .single();
+
+  if (!profile) {
+    return new NextResponse('Invalid calendar token', { status: 404 });
+  }
+
+  // Get sessions from current and recent academic years
+  const { data: sessions } = await supabase
+    .from('sessions')
+    .select('session_date, topic, faculty, vendor, academic_years!inner(label, is_current, start_date)')
+    .or('is_current.eq.true,start_date.gte.' + new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], { referencedTable: 'academic_years' })
+    .order('session_date', { ascending: true });
+
+  const calendar = ical({
+    name: 'OHSU Ortho Sim Lab Curriculum',
+    timezone: 'America/Los_Angeles',
+    method: ICalCalendarMethod.PUBLISH,
+    ttl: 3600,
+  });
+
+  if (sessions) {
+    for (const session of sessions) {
+      if (!session.topic?.trim()) continue;
+
+      const description = [
+        session.faculty?.length ? `Faculty: ${session.faculty.join(', ')}` : null,
+        session.vendor ? `Vendor: ${session.vendor}` : null,
+      ].filter(Boolean).join('\n');
+
+      calendar.createEvent({
+        start: new Date(session.session_date + 'T07:00:00'),
+        end: new Date(session.session_date + 'T12:00:00'),
+        summary: session.topic,
+        description: description || undefined,
+        location: 'OHSU Simulation Center',
+      });
+    }
+  }
+
+  return new NextResponse(calendar.toString(), {
+    headers: {
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="ohsu-sim-lab.ics"',
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
+    },
+  });
+}
