@@ -51,11 +51,11 @@ export async function GET(
       ].filter(Boolean).join('\n');
 
       calendar.createEvent({
-        start: new Date(session.session_date + 'T07:00:00'),
-        end: new Date(session.session_date + 'T12:00:00'),
+        start: new Date(session.session_date + 'T06:30:00'),
+        end: new Date(session.session_date + 'T08:30:00'),
         summary: session.topic,
         description: description || undefined,
-        location: 'OHSU Simulation Center',
+        location: 'VirtuOHSU',
       });
     }
   }
