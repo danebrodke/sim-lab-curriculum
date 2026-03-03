@@ -40,7 +40,7 @@ const BASE_COLUMNS = [
   { key: 'faculty', label: 'Faculty', defaultWidth: 100 },
   { key: 'vendor', label: 'Vendor', defaultWidth: 130 },
   { key: 'contact', label: 'Contact', defaultWidth: 150 },
-  { key: 'files', label: 'Files', defaultWidth: 120 },
+  { key: 'files', label: 'Files', defaultWidth: 120, editorOnly: true },
   { key: 'equipment', label: 'Equipment', defaultWidth: 100 },
   { key: 'tissue', label: 'Tissue', defaultWidth: 220 },
 ] as const;
@@ -100,6 +100,7 @@ export function SessionTable({ sessions, role, highlightedDate, attachments, sho
   const showRestricted = canViewRestrictedFields(role);
   const userCanEdit = canEdit(role);
   const userIsAdmin = isAdmin(role);
+  const visibleColumns = BASE_COLUMNS.filter(col => !col.editorOnly || userCanEdit);
 
   const isHolidayOrEmpty = (s: Session) => {
     const topic = s.topic?.toLowerCase() || '';
@@ -152,7 +153,7 @@ export function SessionTable({ sessions, role, highlightedDate, attachments, sho
       <Table style={{ tableLayout: 'fixed' }}>
         <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow className="bg-muted/50">
-            {BASE_COLUMNS.map(col => (
+            {visibleColumns.map(col => (
               <TableHead
                 key={col.key}
                 style={{ width: colWidths[col.key] }}
@@ -259,28 +260,30 @@ export function SessionTable({ sessions, role, highlightedDate, attachments, sho
                   <TableCell className="overflow-hidden"><FacultyBadges faculty={session.faculty} /></TableCell>
                   <TableCell className="overflow-hidden"><CellText text={session.vendor} /></TableCell>
                   <TableCell className="overflow-hidden"><VendorContactCards contacts={session.vendor_contacts} /></TableCell>
-                  <TableCell className="overflow-hidden">
-                    {sessionAttachments.length > 0 ? (
-                      <div className="flex flex-col gap-0.5">
-                        {sessionAttachments.map(att => (
-                          <Tooltip key={att.id}>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={(e) => handleDownloadAttachment(att, e)}
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 rounded px-1.5 py-0.5 text-left max-w-full"
-                              >
-                                <Download className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{att.file_name}</span>
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                              <p>{att.file_name}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                      </div>
-                    ) : null}
-                  </TableCell>
+                  {userCanEdit && (
+                    <TableCell className="overflow-hidden">
+                      {sessionAttachments.length > 0 ? (
+                        <div className="flex flex-col gap-0.5">
+                          {sessionAttachments.map(att => (
+                            <Tooltip key={att.id}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={(e) => handleDownloadAttachment(att, e)}
+                                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 rounded px-1.5 py-0.5 text-left max-w-full"
+                                >
+                                  <Download className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{att.file_name}</span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                <p>{att.file_name}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                  )}
                   <TableCell className="overflow-hidden"><EquipmentList equipment={session.equipment} /></TableCell>
                   <TableCell className="overflow-hidden">
                     <CellText text={session.tissue} />
