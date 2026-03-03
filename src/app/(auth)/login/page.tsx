@@ -20,11 +20,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    // TODO: Re-enable domain restriction for production
-    // if (!email.endsWith('@ohsu.edu')) {
-    //   setError('Please use your @ohsu.edu email address.');
-    //   return;
-    // }
+    if (!email.endsWith('@ohsu.edu')) {
+      setError('Please use your @ohsu.edu email address.');
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
