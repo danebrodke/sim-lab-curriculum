@@ -34,7 +34,7 @@ function CellText({ text, className }: { text: string | null; className?: string
 }
 
 // Column definitions with default widths
-const BASE_COLUMNS = [
+const BASE_COLUMNS: readonly { key: string; label: string; defaultWidth: number; editorOnly?: boolean }[] = [
   { key: 'date', label: 'Date', defaultWidth: 76 },
   { key: 'topic', label: 'Topic', defaultWidth: 240 },
   { key: 'faculty', label: 'Faculty', defaultWidth: 100 },
@@ -43,7 +43,7 @@ const BASE_COLUMNS = [
   { key: 'files', label: 'Files', defaultWidth: 120, editorOnly: true },
   { key: 'equipment', label: 'Equipment', defaultWidth: 100 },
   { key: 'tissue', label: 'Tissue', defaultWidth: 220 },
-] as const;
+];
 
 interface SessionTableProps {
   sessions: Session[];
