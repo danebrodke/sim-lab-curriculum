@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const { profile, loading: userLoading } = useUser();
-  const { selectedYear, navigateYear, canNavigate, loading: yearsLoading } = useAcademicYears();
+  const { years, selectedYear, navigateYear, canNavigate, loading: yearsLoading } = useAcademicYears();
   const role = profile?.role || 'viewer';
   const { sessions, loading: sessionsLoading, updateSession, createSession, deleteSession } = useSessions(
     selectedYear?.id || null,
@@ -105,8 +105,10 @@ export default function DashboardPage() {
 
   const handleCreateSession = async (data: Partial<Session>) => {
     if (!selectedYear || !data.session_date) return;
+    // Assign to the correct academic year based on the date
+    const targetYear = years.find(y => data.session_date! >= y.start_date && data.session_date! <= y.end_date) || selectedYear;
     const newSession = {
-      academic_year_id: selectedYear.id,
+      academic_year_id: targetYear.id,
       session_date: data.session_date,
       session_type: data.session_type ?? 'simulation' as SessionType,
       topic: data.topic ?? null,

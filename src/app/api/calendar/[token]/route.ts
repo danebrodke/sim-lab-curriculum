@@ -32,7 +32,8 @@ export async function GET(
     .from('sessions')
     .select('session_date, topic, faculty, vendor, academic_years!inner(label, is_current, start_date)')
     .or('is_current.eq.true,start_date.gte.' + new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], { referencedTable: 'academic_years' })
-    .order('session_date', { ascending: true });
+    .order('session_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
   const calendar = ical({
     name: 'OHSU Ortho Sim Lab Curriculum',

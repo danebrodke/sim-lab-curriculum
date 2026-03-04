@@ -25,7 +25,8 @@ export function useSessions(academicYearId: string | null, role: UserRole) {
       .from('sessions')
       .select(fields.join(', '))
       .eq('academic_year_id', academicYearId)
-      .order('session_date', { ascending: true });
+      .order('session_date', { ascending: true })
+      .order('created_at', { ascending: true });
 
     if (!error && data) {
       setSessions(data as unknown as Session[]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -24,9 +24,10 @@ interface SessionEditDialogProps {
 
 export function SessionEditDialog({ session, academicYearId, open, onOpenChange, onSave, onDelete }: SessionEditDialogProps) {
   const isCreateMode = !session;
+  const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    session_date: session?.session_date || '',
+    session_date: session?.session_date || todayStr,
     session_type: (session?.session_type || 'simulation') as SessionType,
     topic: session?.topic || '',
     faculty: session?.faculty?.join(', ') || '',
@@ -126,7 +127,8 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
                 id="session_date"
                 type="date"
                 value={form.session_date}
-                onChange={e => update('session_date', e.target.value)}
+                onChange={e => { if (e.target.value) update('session_date', e.target.value); }}
+                onBlur={e => { if (e.target.value) update('session_date', e.target.value); }}
               />
             </div>
             <div className="grid gap-2">
@@ -248,7 +250,7 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
           ) : <div />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Discard</Button>
-            <Button onClick={handleSave} disabled={saving || !form.session_date}>
+            <Button onClick={handleSave} disabled={saving || !form.session_date || (isCreateMode && !form.topic.trim())}>
               {saving ? 'Saving...' : isCreateMode ? 'Create session' : 'Save changes'}
             </Button>
           </div>

@@ -51,6 +51,10 @@ export function CalendarGrid({ startYear, sessions, onDateClick }: CalendarGridP
       requestAnimationFrame(() => {
         monthEl.scrollIntoView({ block: 'start', behavior: 'auto' });
       });
+    } else {
+      // Non-current year: scroll to top
+      const scrollParent = containerRef.current.parentElement;
+      if (scrollParent) scrollParent.scrollTop = 0;
     }
   }, [startYear]);
 

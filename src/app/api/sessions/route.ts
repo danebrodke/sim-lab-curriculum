@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     .from('sessions')
     .select(fields.join(', '))
     .eq('academic_year_id', yearId)
-    .order('session_date', { ascending: true });
+    .order('session_date', { ascending: true })
+    .order('created_at', { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
