@@ -13,11 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Shield, Calendar, RefreshCw } from 'lucide-react';
+import { LogOut, Shield, Calendar, RefreshCw, KeyRound } from 'lucide-react';
 import { isAdmin } from '@/lib/auth/roles';
 import type { Profile } from '@/types/database';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { SetPasswordDialog } from './set-password-dialog';
 
 interface UserMenuProps {
   profile: Profile;
@@ -26,6 +27,7 @@ interface UserMenuProps {
 
 export function UserMenu({ profile, onSignOut }: UserMenuProps) {
   const [regenerating, setRegenerating] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const initials = (profile.display_name || profile.email.split('@')[0])
     .split(/[\s._-]/)
     .map(s => s[0]?.toUpperCase())
@@ -63,6 +65,8 @@ export function UserMenu({ profile, onSignOut }: UserMenuProps) {
   };
 
   return (
+    <>
+    <SetPasswordDialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog} />
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -94,6 +98,11 @@ export function UserMenu({ profile, onSignOut }: UserMenuProps) {
           <RefreshCw className="mr-2 h-4 w-4" />
           Regenerate calendar token
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
+          <KeyRound className="mr-2 h-4 w-4" />
+          Set password
+        </DropdownMenuItem>
         {isAdmin(profile.role) && (
           <>
             <DropdownMenuSeparator />
@@ -118,5 +127,6 @@ export function UserMenu({ profile, onSignOut }: UserMenuProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }
