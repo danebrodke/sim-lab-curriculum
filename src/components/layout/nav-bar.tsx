@@ -12,11 +12,8 @@ export function NavBar() {
       <div className="relative flex h-14 items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-3 shrink-0">
           <h1 className="text-sm lg:text-lg font-semibold tracking-tight whitespace-nowrap">
-            Sim Lab Curriculum
+            Ortho Sim Lab
           </h1>
-          <span className="hidden sm:inline text-xs text-muted-foreground font-medium">
-            OHSU Orthopaedics
-          </span>
         </div>
         {/* Portal target for page-specific center content (e.g. year nav) */}
         <div id="navbar-center" className="absolute left-1/2 -translate-x-1/2 hidden lg:block" />

@@ -15,7 +15,14 @@ import { SessionEditDialog } from '@/components/dashboard/session-edit-dialog';
 import { CalendarGrid } from '@/components/dashboard/calendar-grid';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, Plus } from 'lucide-react';
+import { Calendar, Download, Plus, RefreshCw } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { canEdit } from '@/lib/auth/roles';
 import { exportSessionsToCSV } from '@/lib/csv/exporter';
 import type { Session, SessionType, Attachment } from '@/types/database';
@@ -40,6 +47,7 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [attachmentsMap, setAttachmentsMap] = useState<Record<string, Attachment[]>>({});
   const [attachmentsVersion, setAttachmentsVersion] = useState(0);
+  const [regenerating, setRegenerating] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const [navbarCenter, setNavbarCenter] = useState<Element | null>(null);
 
@@ -89,6 +97,37 @@ export default function DashboardPage() {
     setHighlightedDate(date);
     scrollToDate(date);
     setTimeout(() => setHighlightedDate(null), 2500);
+  };
+
+  const handleSubscribeCalendar = () => {
+    if (!profile) return;
+    const webcalUrl = `webcal://${window.location.host}/api/calendar/${profile.calendar_token}`;
+    window.open(webcalUrl);
+  };
+
+  const handleCopyCalendarUrl = () => {
+    if (!profile) return;
+    const url = `${window.location.origin}/api/calendar/${profile.calendar_token}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Calendar URL copied to clipboard');
+  };
+
+  const handleRegenerateToken = async () => {
+    if (!profile) return;
+    setRegenerating(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('profiles')
+      .update({ calendar_token: crypto.randomUUID() })
+      .eq('id', profile.id);
+
+    if (error) {
+      toast.error('Failed to regenerate calendar token');
+    } else {
+      toast.success('Calendar token regenerated. Update your calendar subscription.');
+      window.location.reload();
+    }
+    setRegenerating(false);
   };
 
   const handleDownloadCSV = () => {
@@ -192,6 +231,29 @@ export default function DashboardPage() {
               Add
             </Button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="hidden lg:inline-flex" disabled={loading || !profile}>
+                <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                Calendar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleSubscribeCalendar}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Subscribe (Apple/Outlook)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyCalendarUrl}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Copy calendar URL (Google)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleRegenerateToken} disabled={regenerating}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Regenerate calendar token
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" className="hidden lg:inline-flex" onClick={handleDownloadCSV} disabled={loading}>
             <Download className="mr-1.5 h-3.5 w-3.5" />
             CSV

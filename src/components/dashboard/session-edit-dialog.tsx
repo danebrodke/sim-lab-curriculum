@@ -190,7 +190,7 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="equipment">Equipment (comma-separated)</Label>
-              <Input id="equipment" value={form.equipment} onChange={e => update('equipment', e.target.value)} />
+              <Textarea id="equipment" rows={2} value={form.equipment} onChange={e => update('equipment', e.target.value)} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="tissue">Tissue</Label>

@@ -25,7 +25,7 @@ export function AcademicYearNav({ selectedYear, onNavigate, canNavigate }: Acade
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="text-sm font-semibold tabular-nums min-w-[90px] text-center">
+      <span className="text-base font-bold tabular-nums min-w-[100px] text-center">
         {selectedYear.label}
       </span>
       <Button

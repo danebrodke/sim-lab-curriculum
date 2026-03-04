@@ -58,9 +58,11 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
           <X className="h-3.5 w-3.5" />
         </Button>
       )}
-      <kbd className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-        {localValue ? '' : '/'}
-      </kbd>
+      {!localValue && (
+        <kbd className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+          /
+        </kbd>
+      )}
     </div>
   );
 }
