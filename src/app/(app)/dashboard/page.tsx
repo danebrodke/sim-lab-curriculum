@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -99,15 +100,17 @@ export default function DashboardPage() {
     setTimeout(() => setHighlightedDate(null), 2500);
   };
 
-  const handleSubscribeCalendar = () => {
+  const handleSubscribeCalendar = (filter?: string) => {
     if (!profile) return;
-    const webcalUrl = `webcal://${window.location.host}/api/calendar/${profile.calendar_token}`;
+    const qs = filter ? `?filter=${filter}` : '';
+    const webcalUrl = `webcal://${window.location.host}/api/calendar/${profile.calendar_token}${qs}`;
     window.open(webcalUrl);
   };
 
-  const handleCopyCalendarUrl = () => {
+  const handleCopyCalendarUrl = (filter?: string) => {
     if (!profile) return;
-    const url = `${window.location.origin}/api/calendar/${profile.calendar_token}`;
+    const qs = filter ? `?filter=${filter}` : '';
+    const url = `${window.location.origin}/api/calendar/${profile.calendar_token}${qs}`;
     navigator.clipboard.writeText(url);
     toast.success('Calendar URL copied to clipboard');
   };
@@ -239,13 +242,24 @@ export default function DashboardPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleSubscribeCalendar}>
+              <DropdownMenuLabel>Simulation Sessions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleSubscribeCalendar('simulation')}>
                 <Calendar className="mr-2 h-4 w-4" />
                 Subscribe (Apple/Outlook)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyCalendarUrl}>
+              <DropdownMenuItem onClick={() => handleCopyCalendarUrl('simulation')}>
                 <Calendar className="mr-2 h-4 w-4" />
-                Copy calendar URL (Google)
+                Copy URL (Google)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>All Sessions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleSubscribeCalendar()}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Subscribe (Apple/Outlook)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCopyCalendarUrl()}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Copy URL (Google)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleRegenerateToken} disabled={regenerating}>
