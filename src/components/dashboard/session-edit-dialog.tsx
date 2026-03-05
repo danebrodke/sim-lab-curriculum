@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { AttachmentList } from './attachment-list';
-import type { Session, SessionType, VendorContact } from '@/types/database';
+import type { Session, SessionType, SessionLink, VendorContact } from '@/types/database';
 
 interface SessionEditDialogProps {
   session?: Session;
@@ -34,6 +34,9 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
     vendor: session?.vendor || '',
     vendor_contacts_text: session?.vendor_contacts
       ?.map(c => [c.name, c.company, c.email].filter(Boolean).join(', '))
+      .join('\n') || '',
+    links_text: session?.links
+      ?.map(l => `${l.title}, ${l.url}`)
       .join('\n') || '',
     equipment: session?.equipment?.join(', ') || '',
     tissue: session?.tissue || '',
@@ -65,6 +68,19 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
       };
     });
 
+    const links: SessionLink[] = form.links_text
+      .split('\n')
+      .filter(l => l.trim())
+      .map(line => {
+        const commaIdx = line.indexOf(',');
+        if (commaIdx === -1) return { title: line.trim(), url: '' };
+        return {
+          title: line.slice(0, commaIdx).trim(),
+          url: line.slice(commaIdx + 1).trim(),
+        };
+      })
+      .filter(l => l.url);
+
     const payload: Partial<Session> = {
       session_date: form.session_date,
       session_type: form.session_type,
@@ -72,6 +88,7 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
       faculty: form.faculty.split(',').map(s => s.trim()).filter(Boolean),
       vendor: form.vendor || null,
       vendor_contacts,
+      links,
       equipment: form.equipment.split(',').map(s => s.trim()).filter(Boolean),
       tissue: form.tissue || null,
       bdp_superficial: form.bdp_superficial || null,
@@ -196,6 +213,17 @@ export function SessionEditDialog({ session, academicYearId, open, onOpenChange,
               <Label htmlFor="tissue">Tissue</Label>
               <Textarea id="tissue" rows={2} value={form.tissue} onChange={e => update('tissue', e.target.value)} />
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="links">Links (one per line: Title, URL)</Label>
+            <Textarea
+              id="links"
+              rows={3}
+              value={form.links_text}
+              onChange={e => update('links_text', e.target.value)}
+              placeholder="Shoulder Arthroscopy Video, https://example.com/video"
+            />
           </div>
 
           <Separator />

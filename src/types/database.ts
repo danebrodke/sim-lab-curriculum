@@ -26,6 +26,11 @@ export interface VendorContact {
   company: string | null;
 }
 
+export interface SessionLink {
+  title: string;
+  url: string;
+}
+
 export type SessionType = 'simulation' | 'other';
 
 export interface Session {
@@ -37,6 +42,7 @@ export interface Session {
   faculty: string[];
   vendor: string | null;
   vendor_contacts: VendorContact[];
+  links: SessionLink[];
   equipment: string[];
   tissue: string | null;
   bdp_superficial: string | null;
@@ -71,7 +77,7 @@ export interface SessionWithAttachments extends Session {
 // Fields visible to viewers
 export const VIEWER_FIELDS = [
   'id', 'session_date', 'session_type', 'topic', 'faculty', 'vendor',
-  'vendor_contacts', 'equipment', 'tissue', 'academic_year_id', 'sort_order'
+  'vendor_contacts', 'links', 'equipment', 'tissue', 'academic_year_id', 'sort_order'
 ] as const;
 
 // All fields visible to editors/admins

@@ -14,6 +14,7 @@ import { canEdit, isAdmin, canViewRestrictedFields } from '@/lib/auth/roles';
 import type { Session, UserRole, Attachment } from '@/types/database';
 import { FacultyBadges } from './faculty-badges';
 import { VendorContactCards } from './vendor-contact-card';
+import { SessionLinks } from './session-links';
 import { EquipmentList } from './equipment-list';
 import { SessionEditDialog } from './session-edit-dialog';
 import { toast } from 'sonner';
@@ -44,8 +45,8 @@ const BASE_COLUMNS: readonly { key: string; label: string; defaultWidth: number;
   { key: 'date', label: 'Date', defaultWidth: 76 },
   { key: 'topic', label: 'Topic', defaultWidth: 240 },
   { key: 'faculty', label: 'Faculty', defaultWidth: 100 },
-  { key: 'vendor', label: 'Vendor', defaultWidth: 130 },
-  { key: 'contact', label: 'Contact', defaultWidth: 150 },
+  { key: 'vendor', label: 'Vendor', defaultWidth: 180 },
+  { key: 'links', label: 'Links', defaultWidth: 130 },
   { key: 'files', label: 'Files', defaultWidth: 120, editorOnly: true },
   { key: 'equipment', label: 'Equipment', defaultWidth: 100 },
   { key: 'tissue', label: 'Tissue', defaultWidth: 220 },
@@ -288,8 +289,15 @@ export function SessionTable({ sessions, role, highlightedDate, attachments, sho
                     onEdit={() => setEditingSession(session)}
                   />
                   <TableCell className="overflow-hidden"><FacultyBadges faculty={session.faculty} /></TableCell>
-                  <TableCell className="overflow-hidden"><CellText text={session.vendor} /></TableCell>
-                  <TableCell className="overflow-hidden"><VendorContactCards contacts={session.vendor_contacts} /></TableCell>
+                  <TableCell className="overflow-hidden">
+                    <CellText text={session.vendor} />
+                    {session.vendor_contacts?.length > 0 && (
+                      <div className="mt-1">
+                        <VendorContactCards contacts={session.vendor_contacts} />
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="overflow-hidden"><SessionLinks links={session.links} /></TableCell>
                   {userCanEdit && (
                     <TableCell className="overflow-hidden">
                       {sessionAttachments.length > 0 ? (

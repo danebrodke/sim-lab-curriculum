@@ -1,7 +1,7 @@
 import type { Session, UserRole } from '@/types/database';
 import { canViewRestrictedFields } from '@/lib/auth/roles';
 
-const VIEWER_HEADERS = ['Date', 'Topic', 'Faculty', 'Vendor', 'Vendor Contact', 'Equipment', 'Tissue'];
+const VIEWER_HEADERS = ['Date', 'Topic', 'Faculty', 'Vendor', 'Vendor Contact', 'Links', 'Equipment', 'Tissue'];
 const EDITOR_HEADERS = [
   ...VIEWER_HEADERS,
   'Superficial (skin incisions)',
@@ -28,12 +28,17 @@ export function exportSessionsToCSV(sessions: Session[], role: UserRole): string
       .map(c => [c.name, c.company, c.email].filter(Boolean).join(', '))
       .join('; ');
 
+    const linksStr = (s.links || [])
+      .map(l => `${l.title} (${l.url})`)
+      .join('; ');
+
     const base = [
       s.session_date,
       s.topic || '',
       s.faculty.join(', '),
       s.vendor || '',
       contactStr,
+      linksStr,
       s.equipment.join(', '),
       s.tissue || '',
     ];
