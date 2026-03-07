@@ -12,7 +12,7 @@ export function EquipmentList({ equipment }: EquipmentListProps) {
   return (
     <div className="flex flex-wrap gap-1">
       {equipment.map((item, i) => (
-        <Badge key={i} variant="outline" className="text-xs font-normal px-1.5 py-0">
+        <Badge key={i} variant="secondary" className="text-xs font-normal px-1.5 py-0">
           {item}
         </Badge>
       ))}
