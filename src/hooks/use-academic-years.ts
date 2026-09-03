@@ -22,9 +22,11 @@ export function useAcademicYears() {
       const typedYears = data as AcademicYear[];
       setYears(typedYears);
 
+      // Prefer the academic year that contains today's date; fall back to the
+      // admin-set is_current flag, then the most recent year.
       const currentLabel = getCurrentAcademicYearLabel();
-      const current = typedYears.find(y => y.is_current) ||
-                      typedYears.find(y => y.label === currentLabel) ||
+      const current = typedYears.find(y => y.label === currentLabel) ||
+                      typedYears.find(y => y.is_current) ||
                       typedYears[0];
 
       setCurrentYear(current || null);
