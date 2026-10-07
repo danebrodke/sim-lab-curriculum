@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { authClient } from '@/lib/auth-client';
 import type { Profile } from '@/types/database';
 
 export function useUser() {
@@ -9,21 +9,8 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    setProfile(data as Profile | null);
+    const res = await fetch('/api/me');
+    setProfile(res.ok ? ((await res.json()) as Profile) : null);
     setLoading(false);
   }, []);
 
@@ -32,8 +19,7 @@ export function useUser() {
   }, [fetchProfile]);
 
   const signOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await authClient.signOut();
     window.location.href = '/login';
   };
 

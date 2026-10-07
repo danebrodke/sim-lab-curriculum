@@ -1,32 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { query, queryOne } from '@/lib/db';
+import { requireRole, serverError } from '@/lib/api';
+import { getDownloadUrl, deleteObject } from '@/lib/storage';
+import type { Attachment } from '@/types/database';
 
+// Returns a short-lived signed download URL
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { error } = await requireRole('editor');
+  if (error) return error;
 
-  const { data: attachment } = await supabase
-    .from('attachments')
-    .select('*')
-    .eq('id', id)
-    .single();
-
+  const attachment = await queryOne<Attachment>('select * from attachments where id = $1', [id]);
   if (!attachment) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { data } = await supabase.storage
-    .from('session-attachments')
-    .createSignedUrl(attachment.file_path, 3600);
-
-  if (!data?.signedUrl) {
-    return NextResponse.json({ error: 'Failed to generate URL' }, { status: 500 });
+  try {
+    const url = await getDownloadUrl(attachment.file_path, attachment.file_name);
+    return NextResponse.json({ url });
+  } catch (err) {
+    return serverError(err);
   }
-
-  return NextResponse.json({ url: data.signedUrl });
 }
 
 export async function DELETE(
@@ -34,29 +29,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { error } = await requireRole('editor');
+  if (error) return error;
 
-  const { data: attachment } = await supabase
-    .from('attachments')
-    .select('*')
-    .eq('id', id)
-    .single();
-
+  const attachment = await queryOne<Attachment>('select * from attachments where id = $1', [id]);
   if (!attachment) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Delete from storage
-  await supabase.storage
-    .from('session-attachments')
-    .remove([attachment.file_path]);
-
-  // Delete record
-  const { error } = await supabase
-    .from('attachments')
-    .delete()
-    .eq('id', id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+  try {
+    await deleteObject(attachment.file_path);
+    await query('delete from attachments where id = $1', [id]);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return serverError(err);
+  }
 }

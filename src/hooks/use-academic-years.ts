@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import type { AcademicYear } from '@/types/database';
 import { getCurrentAcademicYearLabel } from '@/lib/calendar/academic-year';
 
@@ -12,14 +11,10 @@ export function useAcademicYears() {
   const [loading, setLoading] = useState(true);
 
   const fetchYears = useCallback(async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('academic_years')
-      .select('*')
-      .order('start_date', { ascending: false });
+    const res = await fetch('/api/academic-years');
 
-    if (!error && data) {
-      const typedYears = data as AcademicYear[];
+    if (res.ok) {
+      const typedYears = (await res.json()) as AcademicYear[];
       setYears(typedYears);
 
       // Prefer the academic year that contains today's date; fall back to the

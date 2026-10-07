@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { validatePassword } from '@/lib/auth/password';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,14 +55,15 @@ export function SetPasswordDialog({ open, onOpenChange }: SetPasswordDialogProps
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
+    const res = await fetch('/api/me/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
     });
 
     setLoading(false);
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      setError((await res.json().catch(() => ({}))).error || 'Failed to set password');
     } else {
       toast.success('Password set. You can now sign in with your password.');
       handleOpenChange(false);

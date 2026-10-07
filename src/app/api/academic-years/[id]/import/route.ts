@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { queryOne, transaction } from '@/lib/db';
+import { requireRole, insertSession } from '@/lib/api';
 import { parseCSV } from '@/lib/csv/parser';
 
 export async function POST(
@@ -7,28 +8,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { profile, error } = await requireRole('admin');
+  if (error) return error;
 
-  // Verify admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  // Get academic year
-  const { data: year } = await supabase
-    .from('academic_years')
-    .select('label')
-    .eq('id', id)
-    .single();
-
+  const year = await queryOne<{ label: string }>(
+    'select label from academic_years where id = $1',
+    [id]
+  );
   if (!year) return NextResponse.json({ error: 'Year not found' }, { status: 404 });
 
   const formData = await request.formData();
@@ -40,15 +26,16 @@ export async function POST(
 
   try {
     const parsed = parseCSV(csvText, startYear);
-    const sessionsToInsert = parsed.map((s, i) => ({
-      ...s,
-      academic_year_id: id,
-      sort_order: i,
-      created_by: user.id,
-    }));
 
-    const { error } = await supabase.from('sessions').insert(sessionsToInsert);
-    if (error) throw error;
+    await transaction(async (client) => {
+      for (const [i, s] of parsed.entries()) {
+        await insertSession(
+          (t, p) => client.query(t, p),
+          { ...s, academic_year_id: id, sort_order: i },
+          profile.id
+        );
+      }
+    });
 
     return NextResponse.json({ imported: parsed.length });
   } catch (err) {

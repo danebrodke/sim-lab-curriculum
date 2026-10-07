@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Paperclip, Download, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,13 +16,8 @@ export function AttachmentList({ sessionId, canEdit }: AttachmentListProps) {
   const [uploading, setUploading] = useState(false);
 
   const fetchAttachments = async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('attachments')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: false });
-    if (data) setAttachments(data as Attachment[]);
+    const res = await fetch(`/api/attachments?session_id=${sessionId}`);
+    if (res.ok) setAttachments((await res.json()) as Attachment[]);
   };
 
   useEffect(() => { fetchAttachments(); }, [sessionId]);

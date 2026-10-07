@@ -1,11 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import type { Session, UserRole } from '@/types/database';
-import { VIEWER_FIELDS, EDITOR_FIELDS } from '@/types/database';
-import { canViewRestrictedFields } from '@/lib/auth/roles';
 
+async function apiError(res: Response): Promise<{ error: string | null }> {
+  if (res.ok) return { error: null };
+  const body = await res.json().catch(() => ({}));
+  return { error: body.error || res.statusText };
+}
+
+// `role` is kept in the signature so sessions refetch when the role changes
+// (the API picks visible fields by role).
 export function useSessions(academicYearId: string | null, role: UserRole) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,20 +23,12 @@ export function useSessions(academicYearId: string | null, role: UserRole) {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const fields = canViewRestrictedFields(role) ? EDITOR_FIELDS : VIEWER_FIELDS;
-
-    const { data, error } = await supabase
-      .from('sessions')
-      .select(fields.join(', '))
-      .eq('academic_year_id', academicYearId)
-      .order('session_date', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
-      setSessions(data as unknown as Session[]);
+    const res = await fetch(`/api/sessions?year_id=${encodeURIComponent(academicYearId)}`);
+    if (res.ok) {
+      setSessions((await res.json()) as Session[]);
     }
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [academicYearId, role]);
 
   useEffect(() => {
@@ -39,12 +36,12 @@ export function useSessions(academicYearId: string | null, role: UserRole) {
   }, [fetchSessions]);
 
   const updateSession = async (id: string, updates: Partial<Session>) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('sessions')
-      .update(updates)
-      .eq('id', id);
-
+    const res = await fetch(`/api/sessions/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const { error } = await apiError(res);
     if (!error) {
       await fetchSessions();
     }
@@ -52,11 +49,12 @@ export function useSessions(academicYearId: string | null, role: UserRole) {
   };
 
   const createSession = async (session: Omit<Session, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('sessions')
-      .insert(session);
-
+    const res = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(session),
+    });
+    const { error } = await apiError(res);
     if (!error) {
       await fetchSessions();
     }
@@ -64,12 +62,8 @@ export function useSessions(academicYearId: string | null, role: UserRole) {
   };
 
   const deleteSession = async (id: string) => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('sessions')
-      .delete()
-      .eq('id', id);
-
+    const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+    const { error } = await apiError(res);
     if (!error) {
       await fetchSessions();
     }
