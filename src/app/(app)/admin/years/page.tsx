@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -15,8 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Plus, Upload, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { parseCSV } from '@/lib/csv/parser';
-import { getAcademicYearDates } from '@/lib/calendar/academic-year';
 import type { AcademicYear } from '@/types/database';
 import Link from 'next/link';
 
@@ -31,12 +28,8 @@ export default function AdminYearsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchYears = async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('academic_years')
-      .select('*')
-      .order('start_date', { ascending: false });
-    if (data) setYears(data as AcademicYear[]);
+    const res = await fetch('/api/academic-years');
+    if (res.ok) setYears((await res.json()) as AcademicYear[]);
     setLoading(false);
   };
 
@@ -48,14 +41,12 @@ export default function AdminYearsPage() {
       return;
     }
     setCreating(true);
-    const dates = getAcademicYearDates(newLabel);
-    const supabase = createClient();
-    const { error } = await supabase.from('academic_years').insert({
-      label: newLabel,
-      start_date: dates.start,
-      end_date: dates.end,
+    const res = await fetch('/api/academic-years', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: newLabel }),
     });
-    if (error) toast.error(error.message);
+    if (!res.ok) toast.error((await res.json().catch(() => ({}))).error || 'Failed to create year');
     else {
       toast.success('Academic year created');
       setCreateOpen(false);
@@ -66,15 +57,12 @@ export default function AdminYearsPage() {
   };
 
   const handleSetCurrent = async (yearId: string) => {
-    const supabase = createClient();
-    // Unset all current
-    await supabase.from('academic_years').update({ is_current: false }).neq('id', '');
-    // Set the selected one
-    const { error } = await supabase
-      .from('academic_years')
-      .update({ is_current: true })
-      .eq('id', yearId);
-    if (error) toast.error('Failed to set current year');
+    const res = await fetch(`/api/academic-years/${yearId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_current: true }),
+    });
+    if (!res.ok) toast.error('Failed to set current year');
     else {
       toast.success('Current year updated');
       fetchYears();
@@ -85,26 +73,17 @@ export default function AdminYearsPage() {
     if (!importYearId) return;
     setImporting(true);
 
-    const year = years.find(y => y.id === importYearId);
-    if (!year) { setImporting(false); return; }
-
-    const startYear = parseInt(year.label.split('-')[0]);
-    const text = await file.text();
-
     try {
-      const parsed = parseCSV(text, startYear);
-      const supabase = createClient();
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/academic-years/${importYearId}/import`, {
+        method: 'POST',
+        body: formData,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Import failed');
 
-      const sessionsToInsert = parsed.map((s, i) => ({
-        ...s,
-        academic_year_id: importYearId,
-        sort_order: i,
-      }));
-
-      const { error } = await supabase.from('sessions').insert(sessionsToInsert);
-      if (error) throw error;
-
-      toast.success(`Imported ${parsed.length} sessions`);
+      toast.success(`Imported ${body.imported} sessions`);
       setImportYearId(null);
     } catch (err) {
       toast.error(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);

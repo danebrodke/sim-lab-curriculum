@@ -7,7 +7,6 @@ import { useUser } from '@/hooks/use-user';
 import { useSessions } from '@/hooks/use-sessions';
 import { useAcademicYears } from '@/hooks/use-academic-years';
 import { useSearch } from '@/hooks/use-search';
-import { createClient } from '@/lib/supabase/client';
 import { AcademicYearNav } from '@/components/dashboard/academic-year-nav';
 import { SearchBar } from '@/components/dashboard/search-bar';
 import { SessionTable, useScrollToDate } from '@/components/dashboard/session-table';
@@ -62,16 +61,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!sessionIds) { setAttachmentsMap({}); return; }
     const fetchAttachments = async () => {
-      const supabase = createClient();
-      const ids = sessionIds.split(',');
-      const { data } = await supabase
-        .from('attachments')
-        .select('*')
-        .in('session_id', ids)
-        .order('created_at', { ascending: false });
-      if (data) {
+      const res = await fetch(`/api/attachments?session_ids=${sessionIds}`);
+      if (res.ok) {
+        const data = (await res.json()) as Attachment[];
         const map: Record<string, Attachment[]> = {};
-        for (const att of data as Attachment[]) {
+        for (const att of data) {
           if (!map[att.session_id]) map[att.session_id] = [];
           map[att.session_id].push(att);
         }
@@ -118,13 +112,9 @@ export default function DashboardPage() {
   const handleRegenerateToken = async () => {
     if (!profile) return;
     setRegenerating(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('profiles')
-      .update({ calendar_token: crypto.randomUUID() })
-      .eq('id', profile.id);
+    const res = await fetch('/api/me/calendar-token', { method: 'POST' });
 
-    if (error) {
+    if (!res.ok) {
       toast.error('Failed to regenerate calendar token');
     } else {
       toast.success('Calendar token regenerated. Update your calendar subscription.');

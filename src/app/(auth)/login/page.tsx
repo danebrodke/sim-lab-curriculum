@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { authClient } from '@/lib/auth-client';
 import { validatePassword } from '@/lib/auth/password';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
-type SentMode = null | 'otp' | 'signup-confirm';
+// 'otp' = sign-in code sent; 'verify' = account confirmation code sent
+type SentMode = null | 'otp' | 'verify';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -38,14 +39,14 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithOtp({
+    const { error: authError } = await authClient.emailOtp.sendVerificationOtp({
       email,
+      type: 'sign-in',
     });
 
     setLoading(false);
     if (authError) {
-      setError(authError.message);
+      setError(authError.message || 'Failed to send code.');
     } else {
       setSentMode('otp');
     }
@@ -89,12 +90,9 @@ export default function LoginPage() {
   const verifyOtp = async (token: string) => {
     setError(null);
     setVerifying(true);
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
+    const { error: verifyError } = sentMode === 'verify'
+      ? await authClient.emailOtp.verifyEmail({ email, otp: token })
+      : await authClient.signIn.emailOtp({ email, otp: token });
 
     setVerifying(false);
     if (verifyError) {
@@ -129,28 +127,34 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
 
     if (isSignUp) {
-      const { error: signUpError } = await supabase.auth.signUp({
+      // Sign-up emails a confirmation code (sendVerificationOnSignUp)
+      const { error: signUpError } = await authClient.signUp.email({
         email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        name: email.split('@')[0],
       });
 
       setLoading(false);
       if (signUpError) {
-        setError(signUpError.message);
+        setError(signUpError.message || 'Failed to create account.');
       } else {
-        setSentMode('signup-confirm');
+        setSentMode('verify');
       }
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await authClient.signIn.email({
         email,
         password,
       });
+
+      if (signInError?.status === 403) {
+        // Email not confirmed yet: send a confirmation code
+        await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+        setLoading(false);
+        setSentMode('verify');
+        return;
+      }
 
       setLoading(false);
       if (signInError) {
@@ -187,14 +191,14 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {sentMode === 'otp' ? (
-            /* OTP code entry screen */
+          {sentMode ? (
+            /* Code entry screen (sign-in or account confirmation) */
             <div className="space-y-5 py-2">
               <div className="text-center space-y-2">
                 <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto" />
                 <p className="text-sm font-medium">Check your email</p>
                 <p className="text-sm text-muted-foreground">
-                  We sent a sign-in code to <span className="font-medium text-foreground">{email}</span>
+                  We sent a {sentMode === 'verify' ? 'confirmation' : 'sign-in'} code to <span className="font-medium text-foreground">{email}</span>
                 </p>
               </div>
 
@@ -230,22 +234,6 @@ export default function LoginPage() {
               <div className="text-center">
                 <Button variant="ghost" size="sm" onClick={resetForm}>
                   Use a different email
-                </Button>
-              </div>
-            </div>
-          ) : sentMode === 'signup-confirm' ? (
-            /* Sign-up confirmation screen */
-            <div className="space-y-5 py-2">
-              <div className="text-center space-y-2">
-                <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto" />
-                <p className="text-sm font-medium">Check your email</p>
-                <p className="text-sm text-muted-foreground">
-                  We sent a confirmation link to <span className="font-medium text-foreground">{email}</span>. Click the link to activate your account.
-                </p>
-              </div>
-              <div className="text-center">
-                <Button variant="ghost" size="sm" onClick={resetForm}>
-                  Back to sign in
                 </Button>
               </div>
             </div>

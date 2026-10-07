@@ -1,39 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { query } from '@/lib/db';
+import { requireRole, serverError } from '@/lib/api';
 import { exportSessionsToCSV } from '@/lib/csv/exporter';
-import type { Session, UserRole } from '@/types/database';
+import type { Session } from '@/types/database';
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { profile, error } = await requireRole('viewer');
+  if (error) return error;
 
   const yearId = request.nextUrl.searchParams.get('year_id');
   if (!yearId) return NextResponse.json({ error: 'year_id required' }, { status: 400 });
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  try {
+    const data = await query<Session>(
+      `select * from sessions
+       where academic_year_id = $1
+       order by session_date asc, created_at asc`,
+      [yearId]
+    );
 
-  const role = (profile?.role || 'viewer') as UserRole;
+    const csv = exportSessionsToCSV(data, profile.role);
 
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('academic_year_id', yearId)
-    .order('session_date', { ascending: true })
-    .order('created_at', { ascending: true });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const csv = exportSessionsToCSV((data || []) as Session[], role);
-
-  return new NextResponse(csv, {
-    headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="sim-lab-export.csv"`,
-    },
-  });
+    return new NextResponse(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="sim-lab-export.csv"`,
+      },
+    });
+  } catch (err) {
+    return serverError(err);
+  }
 }
